@@ -8,14 +8,15 @@ int main(int argc, char **argv)
 {
     struct sockaddr_rc addr = { 0 };
     int s, status;
-    char dest[18] = "ac:f7:f3:5b:31:71";
+    char dest[18] = "AC:F7:F3:53:31:BE";
+    char buf[256] = {0};
 
     // allocate a socket
     s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 
     // set the connection parameters (who to connect to)
     addr.rc_family = AF_BLUETOOTH;
-    addr.rc_channel = (uint8_t) 1;
+    addr.rc_channel = (uint8_t) 2;
     str2ba( dest, &addr.rc_bdaddr );
 
     // connect to server
@@ -23,10 +24,13 @@ int main(int argc, char **argv)
 
     // send a message
     if( status == 0 ) {
-        status = write(s, "hello!", 6);
+        write(s, "hello!", 6);
+        read(s, buf, sizeof(buf));
+        printf("Received: %s",buf);
     }
 
-    if( status < 0 ) perror("uh oh");
+    if( status < 0 )
+        perror("uh oh");
 
     close(s);
     return 0;

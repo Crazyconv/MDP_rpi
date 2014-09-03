@@ -1,12 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <string.h>
 #include <pthread.h>
 
-char buf_read[256] = "";
-char buf_write[256] = "";
+#define SIZE 4
+
+char buf_read[SIZE] = "";
+char buf_write[SIZE] = "";
 pthread_t threads[2];
 int sockfd;
 
@@ -16,44 +20,42 @@ void errors(char *msg){
 }
 
 void *readf(void *arg){
-    // while(1){
-    //     bzero(buf_read,256);
-    //     if(read(sockfd,buf_read,255) < 0){
-    //         perror("Error reading from socket. Connection closed.\n");
-    //         break;
-    //     }
-    //     printf("Receiving message from Arduino: %s\n",buf_read);
-    // }
+    while(1){
+        bzero(buf_read,SIZE);
+        if(read(sockfd,buf_read,SIZE) < 0){
+            perror("Error reading from socket. Connection closed.\n");
+            break;
+        }
+        printf("Receiving message from Arduino: %s\n",buf_read);
+    }
     pthread_exit(NULL);
 }
 
 void *writet(void *arg){
     while(1){
         printf("Send message to Arduino: ");
-        bzero(buf_write,256);
-        fgets(buf_write,255,stdin);
-        if(write(sockfd,buf_write,strlen(buf_write))<0){
+        fflush(stdin);
+        bzero(buf_write,SIZE);
+        scanf("%s",buf_write);
+        if(write(sockfd, buf_write, sizeof(buf_write))<0){
             perror("Error writing to socket. Connection closed.\n");
             break;
         }
-        printf("Sent successfully!");
+        printf("Sent successfully!\n");
     }
     pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, n;
+    int portno = atoi(argv[1]);
+    //portno = 5002;
 
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
-    char buffer[256];
+    char buffer[SIZE];
 
-    //portno = 5000;
-    int portno;
-    printf("Port No: ");
-    scanf("%d",&portno);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         errors("ERROR opening socket");
@@ -69,12 +71,13 @@ int main(int argc, char *argv[])
     serv_addr.sin_port = htons(portno);
     if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
         errors("ERROR connecting");
+    printf("socket: %d\n",sockfd);
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    pthread_create(&threads[0],&attr, readf, (void*)1);
-    pthread_create(&threads[1],&attr, writet, (void*)2);
+    pthread_create(&threads[0],&attr, readf, (void*)sockfd);
+    pthread_create(&threads[1],&attr, writet, (void*)sockfd);
 
     pthread_join(threads[0],NULL);
     pthread_join(threads[1],NULL);

@@ -20,8 +20,6 @@ sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	const char *service_name = "Bluetooth Insecure";
 	const char *service_dsc = "For bluetooth connection";
 	const char *service_prov = "Bluetooth";
-	
-	// uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
 	// local variables that will be used to store the different data elements of the service record
 	uuid_t svc_uuid,
@@ -103,18 +101,19 @@ sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	return session;
 }
 
+
 void *setup_rfcomm(void *arg){
+	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
+
 	struct sockaddr_rc addr_server = { 0 }, addr_client = { 0 };
-	int port, fd_temp;
+	int port;
 	socklen_t opt = sizeof(addr_client);
 	char mac_client[256] = "";
-	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
 	// allocate socket
 	fd_rfcomm_server = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-	// just for debug usage
 	if(fd_rfcomm_server < 0){
-		perror("ERROR opening frcomm socket.\n");
+		perror("ERROR opening socket.\n");
 	}
 
 	// bind socket to port 1 of the first available local bluetooth adapter
@@ -130,13 +129,18 @@ void *setup_rfcomm(void *arg){
 	// register bluetooth service with SDP
 	sdp_session_t* session = register_service((uint8_t)port, svc_uuid_int);
 
-	// listen for socket connection 
-	// listen(fd_rfcomm_server, 5);
+	listen(fd_rfcomm_server, 1);
 	printf("Listening to rfcomm in channel %d\n", port);
+
+	fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
+	ba2str(&addr_client.rc_bdaddr, mac_client);
+	printf("Accept connection from %s\n", mac_client);
+	
+
 
 	// once a connection request comes in, close the older one and accept the new one
 	// this is for reconnection when disconnected from PC
-	while((fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
+	//while((fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
 		// if connected, close socket
 		// if(fd_rfcomm >= 0){
 		// 	pthread_mutex_lock(&mutex_fd_rfcomm);
@@ -146,9 +150,9 @@ void *setup_rfcomm(void *arg){
 		// } else {
 		// 	fd_rfcomm = fd_temp;
 		// }
-		ba2str(&addr_client.rc_bdaddr, mac_client);
-		printf("Accept connection from %s with file descriptor %d\n", mac_client, fd_rfcomm);
-	}
+		// ba2str(&addr_client.rc_bdaddr, mac_client);
+		// printf("Accept connection from %s with file descriptor %d\n", mac_client, fd_rfcomm);
+	//}
 }
 
 void *from_rfcomm(void *arg){
@@ -194,9 +198,9 @@ int main(){
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_create(&threads,&attr, setup_rfcomm, (void*)1);
 
-	while(fd_rfcomm<0);
+	//while(fd_rfcomm<0);
 	//sleep(5);
-	from_rfcomm((void*) 1);
+	//from_rfcomm((void*) 1);
 
 	pthread_join(threads,NULL);
 

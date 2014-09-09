@@ -186,6 +186,7 @@ void *setup_rfcomm(void *arg){
 	}
 
 	printf("Socket closed. Stop transmitting.\n");
+	pthread_exit(NULL);
 }
 
 void close_rfcomm(){

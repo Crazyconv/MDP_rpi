@@ -15,6 +15,31 @@ int fd_rfcomm_server;
 pthread_mutex_t mutex_fd_rfcomm;
 char bf_rfcomm[256] = "";
 
+void *from_rfcomm(void *arg){
+	//printf("From Android to Arduino.\n");
+	while(1){
+		bzero(bf_rfcomm,sizeof(bf_rfcomm));
+		//pthread_mutex_lock(&mutex_fd_rfcomm);
+		//fd_temp = fd_rfcomm;
+		//pthread_mutex_unlock(&mutex_fd_rfcomm);
+		if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))<0){
+			printf("The port has been closed. Thread terminating...\n");
+			pthread_exit(NULL);
+		};
+		// //if "terminate" is received, stop communication of 3 devices
+		// if(strcmp(bf_rfcomm,"terminate")==0){
+		// 	pthread_cancel(threads[0]);
+		// 	pthread_cancel(threads[2]);
+		// 	break;
+		// }
+		// pthread_mutex_lock(&mutex_serial);
+		// serialPuts(fd_serial, bf_rfcomm);
+		// pthread_mutex_unlock(&mutex_serial);
+		// printf("From android to arduino: %s\n", bf_rfcomm);
+		printf("Reveice: %s\n", bf_rfcomm);
+	}
+}
+
 sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	// service connection, just for humnan to read
 	const char *service_name = "Bluetooth Insecure";
@@ -103,10 +128,11 @@ sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 
 
 void *setup_rfcomm(void *arg){
+	pthread_t thread_read;
 	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
 	struct sockaddr_rc addr_server = { 0 }, addr_client = { 0 };
-	int port;
+	int port, fd_temp;
 	socklen_t opt = sizeof(addr_client);
 	char mac_client[256] = "";
 
@@ -132,51 +158,31 @@ void *setup_rfcomm(void *arg){
 	listen(fd_rfcomm_server, 1);
 	printf("Listening to rfcomm in channel %d\n", port);
 
-	fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
-	ba2str(&addr_client.rc_bdaddr, mac_client);
-	printf("Accept connection from %s\n", mac_client);
-	
-
+	// fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
+	// ba2str(&addr_client.rc_bdaddr, mac_client);
+	// printf("Accept connection from %s\n", mac_client);
 
 	// once a connection request comes in, close the older one and accept the new one
-	// this is for reconnection when disconnected from PC
-	//while((fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
-		// if connected, close socket
-		// if(fd_rfcomm >= 0){
-		// 	pthread_mutex_lock(&mutex_fd_rfcomm);
-		// 	close(fd_rfcomm);
-		// 	fd_rfcomm = fd_temp;
-		// 	pthread_mutex_unlock(&mutex_fd_rfcomm);
-		// } else {
-		// 	fd_rfcomm = fd_temp;
-		// }
-		// ba2str(&addr_client.rc_bdaddr, mac_client);
-		// printf("Accept connection from %s with file descriptor %d\n", mac_client, fd_rfcomm);
-	//}
-}
+	// this is for reconnection when disconnected from PC	
+	while((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
+		// if already connected, close socket
+		if(fd_rfcomm >= 0){
+			//pthread_mutex_lock(&mutex_fd_rfcomm);
+			close(fd_rfcomm);
+			fd_rfcomm = fd_temp;
+			//pthread_mutex_unlock(&mutex_fd_rfcomm);
+		} else {
+			fd_rfcomm = fd_temp;
+		}
 
-void *from_rfcomm(void *arg){
-	int fd_temp;
-	//printf("From Android to Arduino.\n");
-	while(1){
-		bzero(bf_rfcomm,sizeof(bf_rfcomm));
-		pthread_mutex_lock(&mutex_fd_rfcomm);
-		fd_temp = fd_rfcomm;
-		pthread_mutex_unlock(&mutex_fd_rfcomm);
-		read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm));
-		// //if "terminate" is received, stop communication of 3 devices
-		// if(strcmp(bf_rfcomm,"terminate")==0){
-		// 	pthread_cancel(threads[0]);
-		// 	pthread_cancel(threads[2]);
-		// 	break;
-		// }
-		// pthread_mutex_lock(&mutex_serial);
-		// serialPuts(fd_serial, bf_rfcomm);
-		// pthread_mutex_unlock(&mutex_serial);
-		// printf("From android to arduino: %s\n", bf_rfcomm);
-		printf("Reveice: %s\n", bf_rfcomm);
+		ba2str(&addr_client.rc_bdaddr, mac_client);
+		printf("Accept connection from %s\n", mac_client);
+
+		// create a new thread to read from the new port;
+		pthread_create(&thread_read, NULL, from_rfcomm, (void*)1);
 	}
-	//pthread_exit(NULL);
+
+	printf("Socket closed. Stop transmitting.\n");
 }
 
 void close_rfcomm(){
@@ -197,10 +203,6 @@ int main(){
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_create(&threads,&attr, setup_rfcomm, (void*)1);
-
-	//while(fd_rfcomm<0);
-	//sleep(5);
-	//from_rfcomm((void*) 1);
 
 	pthread_join(threads,NULL);
 

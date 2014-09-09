@@ -23,9 +23,8 @@ void *from_rfcomm(void *arg){
 		//fd_temp = fd_rfcomm;
 		//pthread_mutex_unlock(&mutex_fd_rfcomm);
 		if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))<0){
-			printf("The port has been closed. Thread terminating...\n");
-			pthread_exit(NULL);
-		};
+			break;
+		}
 		// //if "terminate" is received, stop communication of 3 devices
 		// if(strcmp(bf_rfcomm,"terminate")==0){
 		// 	pthread_cancel(threads[0]);
@@ -38,6 +37,8 @@ void *from_rfcomm(void *arg){
 		// printf("From android to arduino: %s\n", bf_rfcomm);
 		printf("Reveice: %s\n", bf_rfcomm);
 	}
+	printf("The port has been closed. Thread terminating...\n");
+	pthread_exit(NULL);
 }
 
 sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
@@ -158,9 +159,11 @@ void *setup_rfcomm(void *arg){
 	listen(fd_rfcomm_server, 1);
 	printf("Listening to rfcomm in channel %d\n", port);
 
+	// ===============================================================================
 	// fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
 	// ba2str(&addr_client.rc_bdaddr, mac_client);
 	// printf("Accept connection from %s\n", mac_client);
+	// ===============================================================================
 
 	// once a connection request comes in, close the older one and accept the new one
 	// this is for reconnection when disconnected from PC	

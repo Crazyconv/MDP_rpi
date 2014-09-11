@@ -143,7 +143,7 @@ void accept_rfcomm(){
 // read from fd_rfcomm
 // if disconnected, close socket and delete fd_rfcomm from fd set
 int read_rfcomm(char* bf_rfcomm){
-	if(read(fd_rfcomm,bf_rfcomm,SIZE)>=0){
+	if(read(fd_rfcomm,bf_rfcomm,SIZE)>0){
 		printf("receive mesage from bluetooth: %s\n", bf_rfcomm);
 		if(strcmp(bf_rfcomm,"end")==0){
 			return STOP;

@@ -52,7 +52,7 @@ void accept_ip(){
 // read from fd_ip
 // if disconnected, close socket and delete fd_ip from fd set
 void read_ip(char* bf_ip){
-	if(read(fd_ip,bf_ip,SIZE)>=0){
+	if(read(fd_ip,bf_ip,SIZE)>0){
 		printf("Receive message from PC: %s\n", bf_ip);
 	} else {
 		printf("Disconnected from PC.\n");

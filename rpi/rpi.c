@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 				read_ip(bf_ip);
 				write_rfcomm(bf_ip);
 				//write_serial(bf_ip);
-				bzero(bf_seial,sizeof(bf_ip));
+				bzero(bf_ip,sizeof(bf_ip));
 			}
 		}
 	}

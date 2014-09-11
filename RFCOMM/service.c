@@ -1,3 +1,7 @@
+// This is the working version. 
+// The program works as bluetooth server waiting for a specific service request uniquely identified by UUID
+// In this case, is the UUID of the android bluetooth
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>

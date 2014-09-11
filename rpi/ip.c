@@ -63,7 +63,7 @@ void *from_ip(void *arg){
 	//printf("From PC to Arduino.\n");
 	while(1){
 		bzero(bf_ip,sizeof(bf_ip));
-		if(read(fd_ip,bf_ip,sizeof(bf_ip)) < 0)
+		if(read(fd_ip,bf_ip,sizeof(bf_ip)) <= 0)
 			break;
 		//pthread_mutex_lock(&mutex_serial);
 		//serialPuts(fd_serial, bf_ip);

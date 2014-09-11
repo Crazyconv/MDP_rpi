@@ -10,18 +10,10 @@
 #include "rfcomm.h"
 #include "global.h"
 
-#define STDIN 0
-#define BAUD 9600
-#define DEVICE_ARDUINO "/dev/ttyACM0"
-
 int fd_rfcomm = -1;
 int fd_rfcomm_server;
+pthread_mutex_t mutex_fd_rfcomm;
 char bf_rfcomm[256] = "";
-
-fd_set readfds;
-
-int fd_serial;
-char bf_serial[256];
 
 sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	// service connection, just for humnan to read
@@ -109,11 +101,55 @@ sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	return session;
 }
 
-void setup_rfcomm(){
+void *from_rfcomm(void *arg){
+	//printf("From Android to Arduino.\n");
+	// while(1){
+	// 	bzero(bf_rfcomm,sizeof(bf_rfcomm));
+	// 	//pthread_mutex_lock(&mutex_fd_rfcomm);
+	// 	//fd_temp = fd_rfcomm;
+	// 	//pthread_mutex_unlock(&mutex_fd_rfcomm);
+	// 	if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))<0){
+	// 		break;
+	// 	}
+	// 	// //if "terminate" is received, stop communication of 3 devices
+	// 	// if(strcmp(bf_rfcomm,"terminate")==0){
+	// 	// 	pthread_cancel(threads[0]);
+	// 	// 	pthread_cancel(threads[2]);
+	// 	// 	break;
+	// 	// }
+	// 	// pthread_mutex_lock(&mutex_serial);
+	// 	// serialPuts(fd_serial, bf_rfcomm);
+	// 	// pthread_mutex_unlock(&mutex_serial);
+	// 	// printf("From android to arduino: %s\n", bf_rfcomm);
+	// 	printf("Reveice: %s\n", bf_rfcomm);
+	// }
+	// printf("The port has been closed. Thread terminating...\n");
+	// pthread_exit(NULL);
+	while(1){
+		if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))>0){
+			printf("receive mesage from client: %s\n", bf_rfcomm);
+			bzero(bf_rfcomm,sizeof(bf_rfcomm));
+		} else {
+			printf("Disconnected.\n");
+			if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))>0){
+				printf("receive mesage from client: %s\n", bf_rfcomm);
+				bzero(bf_rfcomm,sizeof(bf_rfcomm));
+			} else {
+				printf("Disconnected.\n");
+			}
+		}
+	}
+
+}
+
+void *setup_rfcomm(void *arg){
+	pthread_t thread_read;
 	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
-	struct sockaddr_rc addr_server = { 0 };
-	int port;
+	struct sockaddr_rc addr_server = { 0 }, addr_client = { 0 };
+	int port, fd_temp;
+	socklen_t opt = sizeof(addr_client);
+	char mac_client[256] = "";
 
 	// allocate socket
 	fd_rfcomm_server = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
@@ -134,9 +170,38 @@ void setup_rfcomm(){
 	// register bluetooth service with SDP
 	sdp_session_t* session = register_service((uint8_t)port, svc_uuid_int);
 
-	FD_SET(fd_rfcomm_server, &readfds);
 	listen(fd_rfcomm_server, 1);
 	printf("Listening to rfcomm in channel %d\n", port);
+
+	// ===============================================================================
+	// fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
+	// ba2str(&addr_client.rc_bdaddr, mac_client);
+	// printf("Accept connection from %s\n", mac_client);
+	// ===============================================================================
+
+	// once a connection request comes in, close the older one and accept the new one
+	// this is for reconnection when disconnected from PC	
+	while((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
+		// if already connected, close socket
+		// if(fd_rfcomm >= 0){
+		// 	//pthread_mutex_lock(&mutex_fd_rfcomm);
+		// 	close(fd_rfcomm);
+		// 	fd_rfcomm = fd_temp;
+		// 	//pthread_mutex_unlock(&mutex_fd_rfcomm);
+		// } else {
+		// 	fd_rfcomm = fd_temp;
+		// }
+		fd_rfcomm = fd_temp;
+
+		ba2str(&addr_client.rc_bdaddr, mac_client);
+		printf("Accept connection from %s\n", mac_client);
+
+		// create a new thread to read from the new port;
+		//pthread_create(&thread_read, NULL, from_rfcomm, (void*)1);
+	}
+
+	printf("Socket closed. Stop transmitting.\n");
+	pthread_exit(NULL);
 }
 
 void close_rfcomm(){
@@ -145,90 +210,29 @@ void close_rfcomm(){
 	printf("Close rfcomm socket.\n");
 }
 
-void setup_serial(){
-	fd_serial = serialOpen(DEVICE_ARDUINO, BAUD);
-	if(fd_serial < 0){
-		perror("ERROR opening serial device.\n");
-	}
-	FD_SET(fd_serial, &readfds);
-	printf("Serial port connection established.\n");
-}
-
-
-void multiplex(){
-	char buffer[256]="";	
-	fd_set readfds_temp;
-	int fd_temp;
-	struct sockaddr_rc addr_client = { 0 };
-	socklen_t opt = sizeof(addr_client);
-	char mac_client[256] = "";
-	
-	// struct timeval tval;
-	// tval.tv_sec = 5;
-	// tval.tv_usec = 0;
-
-	char newChar;
-	int index = 0;
-
-	while(1){
-		readfds_temp = readfds;
-		
-		select(FD_SETSIZE, &readfds_temp, NULL, NULL, NULL);
-
-		if (FD_ISSET(fd_rfcomm_server, &readfds_temp)){
-			if((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
-				fd_rfcomm = fd_temp;
-				FD_SET(fd_rfcomm, &readfds);
-				ba2str(&addr_client.rc_bdaddr, mac_client);
-				printf("Accept connection from %s\n", mac_client);
-			}
-		}
-		if (FD_ISSET(fd_rfcomm, &readfds_temp)){
-			if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))>=0){
-				printf("receive mesage from client: %s\n", bf_rfcomm);
-				if(strcmp(bf_rfcomm,"end")==0){
-					break;
-				}
-				write(fd_rfcomm, bf_rfcomm, sizeof(bf_rfcomm));
-				bzero(bf_rfcomm,sizeof(bf_rfcomm));
-			} else {
-				printf("Disconnected.\n");
-				close(fd_rfcomm);
-				FD_CLR(fd_rfcomm, &readfds);
-			}
-		}
-		if (FD_ISSET(fd_serial, &readfds_temp)){
-			while(1){
-				if(serialDataAvail(fd_serial)){
-					newChar = serialGetchar(fd_serial);
-					if(newChar == '\\'){
-						bf_serial[index] = '\0';
-						printf("receive: %s\n",bf_serial);
-						index = 0;
-						bzero(bf_serial, sizeof(bf_serial));
-						break;
-					} else {
-						bf_serial[index] = newChar;
-						index ++;
-					}
-				}
-			}
-		}
-	}
-}
-
 int main(){
 	printf("Program start up!\n");
 
-	// set up file description set
-	FD_ZERO(&readfds);
+	// create threads for each dataflow
+	pthread_attr_t attr;
+	pthread_t threads;
 
-	setup_rfcomm();
-	setup_serial();
-	multiplex();
-	close_rfcomm();
+	pthread_mutex_init(&mutex_fd_rfcomm,NULL);
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_create(&threads,&attr, setup_rfcomm, (void*)1);
+
+	while(fd_rfcomm<0);
+	from_rfcomm((void *)1);
+
+	pthread_join(threads,NULL);
+
+	pthread_attr_destroy(&attr);
+	pthread_mutex_destroy(&mutex_fd_rfcomm);
 
 	printf("Program terminating...\n");
-	return 0;
+
+	pthread_exit(NULL);
 }
 

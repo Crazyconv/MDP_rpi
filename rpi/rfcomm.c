@@ -10,11 +10,6 @@
 #include "rfcomm.h"
 #include "global.h"
 
-int fd_rfcomm = -1;
-int fd_rfcomm_server;
-pthread_mutex_t mutex_fd_rfcomm;
-char bf_rfcomm[256] = "";
-
 sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	// service connection, just for humnan to read
 	const char *service_name = "Bluetooth Insecure";
@@ -101,138 +96,77 @@ sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	return session;
 }
 
-void *from_rfcomm(void *arg){
-	//printf("From Android to Arduino.\n");
-	// while(1){
-	// 	bzero(bf_rfcomm,sizeof(bf_rfcomm));
-	// 	//pthread_mutex_lock(&mutex_fd_rfcomm);
-	// 	//fd_temp = fd_rfcomm;
-	// 	//pthread_mutex_unlock(&mutex_fd_rfcomm);
-	// 	if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))<0){
-	// 		break;
-	// 	}
-	// 	// //if "terminate" is received, stop communication of 3 devices
-	// 	// if(strcmp(bf_rfcomm,"terminate")==0){
-	// 	// 	pthread_cancel(threads[0]);
-	// 	// 	pthread_cancel(threads[2]);
-	// 	// 	break;
-	// 	// }
-	// 	// pthread_mutex_lock(&mutex_serial);
-	// 	// serialPuts(fd_serial, bf_rfcomm);
-	// 	// pthread_mutex_unlock(&mutex_serial);
-	// 	// printf("From android to arduino: %s\n", bf_rfcomm);
-	// 	printf("Reveice: %s\n", bf_rfcomm);
-	// }
-	// printf("The port has been closed. Thread terminating...\n");
-	// pthread_exit(NULL);
-	while(1){
-		if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))>0){
-			printf("receive mesage from client: %s\n", bf_rfcomm);
-			bzero(bf_rfcomm,sizeof(bf_rfcomm));
-		} else {
-			printf("Disconnected.\n");
-			if(read(fd_rfcomm,bf_rfcomm,sizeof(bf_rfcomm))>0){
-				printf("receive mesage from client: %s\n", bf_rfcomm);
-				bzero(bf_rfcomm,sizeof(bf_rfcomm));
-			} else {
-				printf("Disconnected.\n");
-			}
-		}
-	}
-
-}
-
-void *setup_rfcomm(void *arg){
-	pthread_t thread_read;
-	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
-
-	struct sockaddr_rc addr_server = { 0 }, addr_client = { 0 };
-	int port, fd_temp;
-	socklen_t opt = sizeof(addr_client);
-	char mac_client[256] = "";
+// open socket and wait for rfcomm connection 
+void setup_rfcomm(uint32_t *svc_uuid_int){
+	struct sockaddr_rc addr_server = { 0 };
+	int port;
 
 	// allocate socket
 	fd_rfcomm_server = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if(fd_rfcomm_server < 0){
-		perror("ERROR opening socket.\n");
-	}
+		perror("ERROR opening rfcomm socket.\n");
+	} else {
+		// bind socket to port 1 of the first available local bluetooth adapter
+		addr_server.rc_family = AF_BLUETOOTH;
+		addr_server.rc_bdaddr = *BDADDR_ANY;
+		// dynamically assigned port number
+		for(port = 1; port < 30; port++){
+			addr_server.rc_channel = port;
+			if(bind(fd_rfcomm_server, (struct sockaddr *)&addr_server, sizeof(addr_server)) == 0)
+				break;
+		}
 
-	// bind socket to port 1 of the first available local bluetooth adapter
-	addr_server.rc_family = AF_BLUETOOTH;
-	addr_server.rc_bdaddr = *BDADDR_ANY;
-	// dynamically assigned port number
-	for(port = 1; port < 30; port++){
-		addr_server.rc_channel = port;
-		if(bind(fd_rfcomm_server, (struct sockaddr *)&addr_server, sizeof(addr_server)) == 0)
-			break;
-	}
+		// register bluetooth service with SDP
+		sdp_session_t* session = register_service((uint8_t)port, svc_uuid_int);
 
-	// register bluetooth service with SDP
-	sdp_session_t* session = register_service((uint8_t)port, svc_uuid_int);
-
-	listen(fd_rfcomm_server, 1);
-	printf("Listening to rfcomm in channel %d\n", port);
-
-	// ===============================================================================
-	// fd_rfcomm = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt);
-	// ba2str(&addr_client.rc_bdaddr, mac_client);
-	// printf("Accept connection from %s\n", mac_client);
-	// ===============================================================================
-
-	// once a connection request comes in, close the older one and accept the new one
-	// this is for reconnection when disconnected from PC	
-	while((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
-		// if already connected, close socket
-		// if(fd_rfcomm >= 0){
-		// 	//pthread_mutex_lock(&mutex_fd_rfcomm);
-		// 	close(fd_rfcomm);
-		// 	fd_rfcomm = fd_temp;
-		// 	//pthread_mutex_unlock(&mutex_fd_rfcomm);
-		// } else {
-		// 	fd_rfcomm = fd_temp;
-		// }
-		fd_rfcomm = fd_temp;
-
-		ba2str(&addr_client.rc_bdaddr, mac_client);
-		printf("Accept connection from %s\n", mac_client);
-
-		// create a new thread to read from the new port;
-		//pthread_create(&thread_read, NULL, from_rfcomm, (void*)1);
-	}
-
-	printf("Socket closed. Stop transmitting.\n");
-	pthread_exit(NULL);
+		FD_SET(fd_rfcomm_server, &readfds);
+		listen(fd_rfcomm_server, 1);
+		printf("Listening to channel %d for rfcomm connection.\n", port);
+	}	
 }
 
+// accept connection request and put fd_rfcomm to fd set
+void accept_rfcomm(){
+	int fd_temp;
+	struct sockaddr_rc addr_client = { 0 };
+	socklen_t opt = sizeof(addr_client);
+	char mac_client[256] = "";
+
+	if((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
+		fd_rfcomm = fd_temp;
+		FD_SET(fd_rfcomm, &readfds);
+		ba2str(&addr_client.rc_bdaddr, mac_client);
+		printf("Accept rfcomm connection from %s\n", mac_client);
+	}
+}
+
+// read from fd_rfcomm
+// if disconnected, close socket and delete fd_rfcomm from fd set
+int read_rfcomm(char* bf_rfcomm){
+	if(read(fd_rfcomm,bf_rfcomm,SIZE)>=0){
+		printf("receive mesage from bluetooth: %s\n", bf_rfcomm);
+		if(strcmp(bf_rfcomm,"end")==0){
+			return STOP;
+		}
+	} else {
+		printf("Disconnected from bluetooth.\n");
+		close(fd_rfcomm);
+		FD_CLR(fd_rfcomm, &readfds);
+	}
+	return CONTINUE;
+}
+
+// write the content of buffer to rfcomm socket
+void write_rfcomm(char* buffer){
+	if(strlen(buffer)>0){
+		write(fd_rfcomm, buffer, strlen(buffer));
+		printf("Write message to bluetooth: %s\n", buffer);;
+	}
+}
+
+// close socket
 void close_rfcomm(){
 	close(fd_rfcomm);
 	close(fd_rfcomm_server);
-	printf("Close rfcomm socket.\n");
+	printf("Close rfcomm connection.\n");
 }
-
-int main(){
-	printf("Program start up!\n");
-
-	// create threads for each dataflow
-	pthread_attr_t attr;
-	pthread_t threads;
-
-	pthread_mutex_init(&mutex_fd_rfcomm,NULL);
-
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	pthread_create(&threads,&attr, setup_rfcomm, (void*)1);
-
-	while(fd_rfcomm<0);
-	from_rfcomm((void *)1);
-
-	pthread_join(threads,NULL);
-
-	pthread_attr_destroy(&attr);
-	pthread_mutex_destroy(&mutex_fd_rfcomm);
-
-	printf("Program terminating...\n");
-
-	pthread_exit(NULL);
-}
-

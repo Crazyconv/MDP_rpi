@@ -10,51 +10,43 @@
 #include "global.h"
 #include "serial.h"
 
-#define BAUD 9600
-#define DEVICE_ARDUINO "/dev/ttyACM0"
-
-int fd_serial;
-char bf_serial[256];
-
-void* setup_serial(void *arg){
-	fd_serial = serialOpen(DEVICE_ARDUINO, BAUD);
+void setup_serial(int baud, char *device){
+	fd_serial = serialOpen(device, baud);
 	if(fd_serial < 0){
-		errors("ERROR opening serial device.\n");
+		perror("ERROR opening serial device.\n");
+	} else {
+		FD_SET(fd_serial, &readfds);
+		printf("Serial port connection established.\n");
 	}
-	printf("Serial port connection established.\n");
 }
 
-void* from_serial(void *arg){
-	char newChar;
+void read_serial(char *bf_serial){
 	int index = 0;
+	char newChar;
 	while(1){
-		// if(index == 4){
-		// 	pthread_mutex_lock(&mutex_ip);
-		// 	write(fd_ip, bf_serial, sizeof(bf_serial));
-		// 	pthread_mutex_unlock(&mutex_ip);
-		// 	printf("From Arduino to PC: %s\n", bf_serial);
-		// 	pthread_mutex_lock(&mutex_rfcomm);
-		// 	write(fd_rfcomm, bf_serial, sizeof(bf_serial));
-		// 	pthread_mutex_unlock(&mutex_rfcomm);
-		// 	printf("From Arduino to Android: %s\n", bf_serial);
-		// 	bzero(bf_serial,SIZE);
-		// 	index = 0;
-		// }
 		if(serialDataAvail(fd_serial)){
 			newChar = serialGetchar(fd_serial);
 			if(newChar == '\\'){
 				bf_serial[index] = '\0';
-				index = 0;
-				printf("receive: %s\n",bf_serial);
+				printf("Receive message from serial:%s\n",bf_serial);
+				break;
+			} else {
+				bf_serial[index] = newChar;
+				index ++;
 			}
-			bf_serial[index] = newChar;
-			index ++;
 		}
 	}
-	pthread_exit(NULL);
+}
+
+void write_serial(char *buffer){
+	if(strlen(buffer)>0){
+		strcat(buffer, "\\");
+		serialPuts(fd_serial, buffer);
+		printf("Write message to serial: %s\n", buffer);
+	}
 }
 
 void close_serial(){
 	serialClose(fd_serial);
-	printf("Close serial port.\n")
+	printf("Close serial port.\n");
 }

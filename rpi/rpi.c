@@ -1,3 +1,11 @@
+/*
+ * port_no: 5000
+ * ip: 192.168.22.1
+ * baud rate: 115200
+ * serial port: "/dev/ttyACM0"
+ * bluetooth UUID: {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb}
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,7 +29,7 @@
 
 #define STDIN 0
 #define PORT_NO 5000
-#define BAUD 9600
+#define BAUD 115200
 #define DEVICE_ARDUINO "/dev/ttyACM0"
 
 int fd_ip=-1, fd_rfcomm=-1, fd_serial=-1;

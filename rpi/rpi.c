@@ -4,6 +4,9 @@
  * baud rate: 115200
  * serial port: "/dev/ttyACM0"
  * bluetooth UUID: {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb}
+ * to compile, type in terminal: gcc -o rpi rpi.c ip.c rfcomm.c serial.c -lpthread -lbluetooth -lwiringPi
+ * to run rpi, type in terminal: ./rpi 5000
+ * one problem: if message from arduino is split using "|" then rpi will process it multiple times.
  */
 
 #include <stdio.h>
@@ -31,6 +34,9 @@
 #define PORT_NO 5000
 #define BAUD 115200
 #define DEVICE_ARDUINO "/dev/ttyACM0"
+
+#define EXPLORE "e|"
+#define RUN "r|"
 
 int fd_ip=-1, fd_rfcomm=-1, fd_serial=-1;
 int fd_ip_server, fd_rfcomm_server;
@@ -79,23 +85,21 @@ int main(int argc, char *argv[]){
 		//ip or rfcomm writing should be before serial.
 		if(fd_rfcomm > 0 && fd_serial > 0 && fd_ip > 0){
 			if (FD_ISSET(fd_rfcomm, &readfds_temp)){
-				if(read_rfcomm(bf_rfcomm)==STOP){
-					break;
-				}
-				write_serial(bf_rfcomm);
+				read_rfcomm(bf_rfcomm);
+				if(strcmp(bf_rfcomm, EXPLORE)==0)
+					write_serial(bf_rfcomm);
+				else if(strcmp(bf_rfcomm, RUN)==0)
+					write_ip(bf_rfcomm);
 				bzero(bf_rfcomm,sizeof(bf_rfcomm));
 			}
 			if (FD_ISSET(fd_serial, &readfds_temp)){
-				printf("lallal\n");
 				read_serial(bf_seial);
 				write_ip(bf_seial);
-				write_rfcomm(bf_seial);
 				bzero(bf_seial,sizeof(bf_seial));
 			}
 			if (FD_ISSET(fd_ip, &readfds_temp)){
 				read_ip(bf_ip);
-				write_rfcomm(bf_ip);
-				//write_serial(bf_ip);
+				write_serial(bf_ip);
 				bzero(bf_ip,sizeof(bf_ip));
 			}
 		}

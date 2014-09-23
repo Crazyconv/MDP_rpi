@@ -26,8 +26,9 @@ void read_serial(char *bf_serial){
 	while(1){
 		if(serialDataAvail(fd_serial)){
 			newChar = serialGetchar(fd_serial);
-			if(newChar == '\\'){
-				bf_serial[index] = '\0';
+			if(newChar == '|'){
+				bf_serial[index] = '|';
+				bf_serial[index+1] = '\0';
 				printf("Receive message from serial:%s\n",bf_serial);
 				break;
 			} else {
@@ -40,7 +41,7 @@ void read_serial(char *bf_serial){
 
 void write_serial(char *buffer){
 	if(strlen(buffer)>0){
-		strcat(buffer, "\\");
+		//strcat(buffer, "|");
 		serialPuts(fd_serial, buffer);
 		printf("Write message to serial: %s\n", buffer);
 	}

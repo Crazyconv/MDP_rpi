@@ -1,8 +1,6 @@
 #ifndef global_h
 #define global_h
 
-#define STOP 0
-#define CONTINUE 1
 #define SIZE 256
 
 #include <sys/types.h>

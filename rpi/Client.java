@@ -39,7 +39,7 @@ public class Client {
 
 	public static void main(String[] args){
 		// SET UP SOCKET CONNECTION
-		setUp("192.168.22.1", 5000);
+		setUp("localhost", 5000);
 
 		// READ AND WRITE
 		Scanner sc = new Scanner(System.in);
@@ -56,4 +56,3 @@ public class Client {
 		}
 	}
 }
-

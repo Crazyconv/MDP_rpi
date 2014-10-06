@@ -37,17 +37,18 @@ void read_serial(char *bf_serial){
 			}
 		}
 	}
+
+// =========================================================
+// Oct 6 for testing
+	// newChar = serialGetchar(fd_serial);
+	// bf_serial[0] = newChar;
+	// bf_serial[1] = '\0';
+	// printf("Receive message from serial:%s\n",bf_serial);
+// =========================================================
 }
 
 void write_serial(char *buffer){
-	//char buffer2[256] = "";
 	if(strlen(buffer)>0){
-		//strcat(buffer, "|");
-		//if(buffer[strlen(buffer)-1]=='\n'){
-		//	strncpy(buffer2, buffer, strlen(buffer)-1);
-		//}else{
-		//	strncpy(buffer2, buffer, strlen(buffer));
-		//}
 		serialPuts(fd_serial, buffer);
 		printf("Write message to serial: %s\n", buffer);
 	}

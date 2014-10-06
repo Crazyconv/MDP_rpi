@@ -52,13 +52,35 @@ void accept_ip(){
 
 // read from fd_ip
 // if disconnected, close socket and delete fd_ip from fd set
+// void read_ip(char* bf_ip){
+// 	if(read(fd_ip,bf_ip,SIZE)>0){
+// 		printf("Receive message from PC: %s\n", bf_ip);
+// 	} else {
+// 		printf("Disconnected from PC.\n");
+// 		close(fd_ip);
+// 		FD_CLR(fd_ip, &readfds);
+// 	}
+// }
+
+// ======================================================
+// Oct 6
 void read_ip(char* bf_ip){
-	char buffer[256] = "";
+	char step_temp[256] = "";
+	int i;
 	if(read(fd_ip,bf_ip,SIZE)>0){
-		strncpy(buffer, bf_ip, strlen(bf_ip)-1);
-		bzero(bf_ip, strlen(bf_ip));
-		strncpy(bf_ip, buffer, strlen(buffer));
 		printf("Receive message from PC: %s\n", bf_ip);
+		if(bf_ip[0] == 'S'){
+			sp = 1;
+			no_sp ++;
+			printf("The %d time shortest path.\n", no_sp);
+			for(i=1;bf_ip[i]!='\0';i++){
+				step_temp[i-1] = bf_ip[i];
+			}
+			step_temp[i-1] = '\0';
+			step = atoi(step_temp);
+			bzero(bf_ip,strlen(bf_ip));
+			printf("Shortest path. %d steps.\n", step);
+		}		
 	} else {
 		printf("Disconnected from PC.\n");
 		close(fd_ip);
@@ -66,12 +88,12 @@ void read_ip(char* bf_ip){
 	}
 }
 
+// ======================================================
+
 // write the content of buffer to ip socket
 void write_ip(char* buffer){
 	if(strlen(buffer)>0){
-		//printf("before");
 		strcat(buffer, "\n");
-		//printf("after");
 		write(fd_ip, buffer, strlen(buffer));
 		printf("Write message to PC: %s\n", buffer);
 	}

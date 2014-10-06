@@ -1,0 +1,1 @@
+gcc -o rpi_3 rpi_3.c ip.c serial.c rfcomm.c -lpthread -lbluetooth -lwiringPi

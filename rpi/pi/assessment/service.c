@@ -124,23 +124,29 @@ int main(){
 	listen(fd_socket, 1);
 	printf("Listening to rfcomm in channel %d\n", port);
 
+	fflush(stdin);
 	fd_frcomm = accept(fd_socket, (struct sockaddr *)&addr_client, &opt);
 	ba2str(&addr_client.rc_bdaddr, buf);
-	fprintf(stderr, "Accept connection from %s\n", buf);
+	fflush(stdout);
+	printf("Accept connection from %s\n", buf);
+	fflush(stdout);
 	close(fd_socket);
 
-	// bzero(buf,sizeof(buf));
-	// read(fd_frcomm, buf, sizeof(buf));
-	// printf("receive mesage from client: %s\n", buf);
-	// bzero(buf,sizeof(buf));
-	// printf("send message to client: ");
-	// fgets(buf,255,stdin);
-	// write(fd_frcomm, buf, sizeof(buf));
+	//bzero(buf,sizeof(buf));
+        //printf("send message to client: ");
+        //fgets(buf,255,stdin);
+        //write(fd_frcomm, buf, sizeof(buf));
+
+	//bzero(buf,sizeof(buf));
+	//read(fd_frcomm, buf, sizeof(buf));
+	//printf("receive mesage from client: %s\n", buf);
 
 	while (1){
 		bzero(buf,sizeof(buf));
 		read(fd_frcomm, buf, sizeof(buf));
+		fflush(stdout);
 		printf("receive mesage from client: %s\n", buf);
+		fflush(stdout);
 		if(strcmp(buf, "end")==0) break;
 	}
 

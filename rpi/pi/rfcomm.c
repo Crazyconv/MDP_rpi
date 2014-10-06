@@ -1,7 +1,3 @@
-// This is the working version. 
-// The program works as bluetooth server waiting for a specific service request uniquely identified by UUID
-// In this case, is the UUID of the android bluetooth
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -11,13 +7,14 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/rfcomm.h>
 
-sdp_session_t *register_service(uint8_t rfcomm_port){
+#include "rfcomm.h"
+#include "global.h"
+
+sdp_session_t *register_service(uint8_t rfcomm_port, uint32_t *svc_uuid_int){
 	// service connection, just for humnan to read
 	const char *service_name = "Bluetooth Insecure";
 	const char *service_dsc = "For bluetooth connection";
 	const char *service_prov = "Bluetooth";
-	
-	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
 	// local variables that will be used to store the different data elements of the service record
 	uuid_t svc_uuid,
@@ -99,53 +96,73 @@ sdp_session_t *register_service(uint8_t rfcomm_port){
 	return session;
 }
 
-int main(){
-	struct sockaddr_rc addr_server = { 0 }, addr_client = { 0 };
-	int fd_socket, fd_frcomm, port;
-	socklen_t opt = sizeof(addr_client);
-	char buf[256] = "";
+// open socket and wait for rfcomm connection 
+void setup_rfcomm(uint32_t *svc_uuid_int){
+	struct sockaddr_rc addr_server = { 0 };
+	int port;
 
 	// allocate socket
-	fd_socket = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	fd_rfcomm_server = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if(fd_rfcomm_server < 0){
+		perror("ERROR opening rfcomm socket.\n");
+	} else {
+		// bind socket to port 1 of the first available local bluetooth adapter
+		addr_server.rc_family = AF_BLUETOOTH;
+		addr_server.rc_bdaddr = *BDADDR_ANY;
+		// dynamically assigned port number
+		for(port = 1; port < 30; port++){
+			addr_server.rc_channel = port;
+			if(bind(fd_rfcomm_server, (struct sockaddr *)&addr_server, sizeof(addr_server)) == 0)
+				break;
+		}
 
-	// bind socket to port 1 of the first available local bluetooth adapter
-	addr_server.rc_family = AF_BLUETOOTH;
-	addr_server.rc_bdaddr = *BDADDR_ANY;
-	// dynamically assigned port number
-	for(port = 1; port < 30; port++){
-		addr_server.rc_channel = port;
-		if(bind(fd_socket, (struct sockaddr *)&addr_server, sizeof(addr_server)) == 0)
-			break;
+		// register bluetooth service with SDP
+		sdp_session_t* session = register_service((uint8_t)port, svc_uuid_int);
+
+		FD_SET(fd_rfcomm_server, &readfds);
+		listen(fd_rfcomm_server, 1);
+		printf("Listening to channel %d for rfcomm connection.\n", port);
+	}	
+}
+
+// accept connection request and put fd_rfcomm to fd set
+void accept_rfcomm(){
+	int fd_temp;
+	struct sockaddr_rc addr_client = { 0 };
+	socklen_t opt = sizeof(addr_client);
+	char mac_client[256] = "";
+
+	if((fd_temp = accept(fd_rfcomm_server, (struct sockaddr *)&addr_client, &opt)) >= 0){
+		fd_rfcomm = fd_temp;
+		FD_SET(fd_rfcomm, &readfds);
+		ba2str(&addr_client.rc_bdaddr, mac_client);
+		printf("Accept rfcomm connection from %s\n", mac_client);
 	}
+}
 
-	// register bluetooth service with SDP
-	sdp_session_t* session = register_service((uint8_t)port);
-
-	listen(fd_socket, 1);
-	printf("Listening to rfcomm in channel %d\n", port);
-
-	fd_frcomm = accept(fd_socket, (struct sockaddr *)&addr_client, &opt);
-	ba2str(&addr_client.rc_bdaddr, buf);
-	fprintf(stderr, "Accept connection from %s\n", buf);
-	close(fd_socket);
-
-	// bzero(buf,sizeof(buf));
-	// read(fd_frcomm, buf, sizeof(buf));
-	// printf("receive mesage from client: %s\n", buf);
-	// bzero(buf,sizeof(buf));
-	// printf("send message to client: ");
-	// fgets(buf,255,stdin);
-	// write(fd_frcomm, buf, sizeof(buf));
-
-	while (1){
-		bzero(buf,sizeof(buf));
-		read(fd_frcomm, buf, sizeof(buf));
-		printf("receive mesage from client: %s\n", buf);
-		if(strcmp(buf, "end")==0) break;
+// read from fd_rfcomm
+// if disconnected, close socket and delete fd_rfcomm from fd set
+void read_rfcomm(char* bf_rfcomm){
+	if(read(fd_rfcomm,bf_rfcomm,SIZE)>0){
+		printf("receive mesage from bluetooth: %s\n", bf_rfcomm);
+	} else {
+		printf("Disconnected from bluetooth.\n");
+		close(fd_rfcomm);
+		FD_CLR(fd_rfcomm, &readfds);
 	}
+}
 
-	close(fd_frcomm);
-	sdp_close(session);
+// write the content of buffer to rfcomm socket
+void write_rfcomm(char* buffer){
+	if(strlen(buffer)>0){
+		write(fd_rfcomm, buffer, strlen(buffer));
+		printf("Write message to bluetooth: %s\n", buffer);;
+	}
+}
 
-	return 0;
+// close socket
+void close_rfcomm(){
+	close(fd_rfcomm);
+	close(fd_rfcomm_server);
+	printf("Close rfcomm connection.\n");
 }

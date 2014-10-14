@@ -17,6 +17,7 @@ void loop(){
 
 int calculateDistance(int pin){
   int average = averageFeedback(30,15,pin);
+  // insert fomular here
   int distance = average;
   return distance;
 }
@@ -44,7 +45,7 @@ int averageFeedback(int in, int out, int pin){
     Serial.print(" ");
   }
   Serial.println();
-  average = (sum+5)/out;
+  average = sum/out;
   return average;
 }
 

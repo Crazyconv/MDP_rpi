@@ -18,6 +18,7 @@ extern fd_set readfds;
 extern int step;
 extern int sp;
 extern int no_sp;
+extern int gts;
 // ===================
 
 #endif

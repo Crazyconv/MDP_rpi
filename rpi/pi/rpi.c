@@ -44,7 +44,7 @@ fd_set readfds;
 
 // =============================
 // Oct 6
-int step = 0, sp = 0, no_sp = 0;
+int step = 0, sp = 0, no_sp = 0, gts;
 // =============================
 
 int main(int argc, char *argv[]){
@@ -101,7 +101,8 @@ int main(int argc, char *argv[]){
 				if(strcmp(bf_rfcomm, EXPLORE)==0)
 					write_serial(bf_rfcomm);
 				else if(strcmp(bf_rfcomm, RUN)==0)
-					write_ip(bf_rfcomm);
+//					write_ip(bf_rfcomm);
+					write_serial(bf_ip);
 				bzero(bf_rfcomm,sizeof(bf_rfcomm));
 			}
 
@@ -114,25 +115,28 @@ int main(int argc, char *argv[]){
 // Oct 6
 			if (FD_ISSET(fd_serial, &readfds_temp)){
 				read_serial(bf_seial);
-				if(no_sp < 2){
-					if(sp == 0){
+				//if(no_sp < 2){
+					if(gts == 0 && sp == 0){
 						write_ip(bf_seial);
-					} else {
-						count ++;
-						printf("Step %d performed\n", count);
-						if(count == step - 1){
-							sp = 0;
-							count = 0;
-						}
 					}
-				}
+//					 else {
+//						count ++;
+//						printf("Step %d performed\n", count);
+//						if(count == step - 1){
+//							sp = 0;
+//							count = 0;
+//						}
+//					}
+				//}
 				bzero(bf_seial,sizeof(bf_seial));
 			}
 // =======================================================			
 			if (FD_ISSET(fd_ip, &readfds_temp)){
 				read_ip(bf_ip);
-				write_serial(bf_ip);
-				bzero(bf_ip,sizeof(bf_ip));
+				if(sp == 0){
+					write_serial(bf_ip);
+					bzero(bf_ip,sizeof(bf_ip));
+				}
 			}
 		}
 	}

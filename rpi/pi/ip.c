@@ -71,16 +71,25 @@ void read_ip(char* bf_ip){
 		printf("Receive message from PC: %s\n", bf_ip);
 		if(bf_ip[0] == 'S'){
 			sp = 1;
-			no_sp ++;
-			printf("The %d time shortest path.\n", no_sp);
-			for(i=1;bf_ip[i]!='\0';i++){
-				step_temp[i-1] = bf_ip[i];
-			}
-			step_temp[i-1] = '\0';
-			step = atoi(step_temp);
 			bzero(bf_ip,strlen(bf_ip));
-			printf("Shortest path. %d steps.\n", step);
-		}		
+// ===================================================================
+// delete Oct 9
+//			no_sp ++;
+//			printf("The %d time shortest path.\n", no_sp);
+//			for(i=1;bf_ip[i]!='\0';i++){
+//				step_temp[i-1] = bf_ip[i];
+//			}
+//			step_temp[i-1] = '\0';
+//			step = atoi(step_temp);
+//			bzero(bf_ip,strlen(bf_ip));
+//			printf("Shortest path. %d steps.\n", step);
+// ==================================================================
+// Oct 9
+		} else if(bf_ip[0] == 'T'){
+			gts = 1;
+			bzero(bf_ip,strlen(bf_ip));
+		}
+// =================================================================		
 	} else {
 		printf("Disconnected from PC.\n");
 		close(fd_ip);

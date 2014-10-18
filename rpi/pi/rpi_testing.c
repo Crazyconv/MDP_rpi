@@ -58,6 +58,14 @@ int main(int argc, char *argv[]){
 	printf("Program start up!\n");
 
 	setup_serial(BAUD, DEVICE_ARDUINO);
+	// test whether serial really established
+	write_serial("J|");
+	while(1){
+		if(serialDataAvail(fd_serial)){
+			printf("Arduino acknowledge: %c\n", serialGetchar(fd_serial));
+			break;
+		}
+	}
 	//setup_rfcomm(svc_uuid_int);
 	setup_ip(port_no);
 

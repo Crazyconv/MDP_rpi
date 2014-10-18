@@ -53,11 +53,19 @@ int main(int argc, char *argv[]){
 	int port_no = atoi(argv[1]);
 	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
-	FD_ZERO(&readfds);
+	FD_ZERO(&readfds);write_serial("J|");
 
 	printf("Program start up!\n");
 
 	setup_serial(BAUD, DEVICE_ARDUINO);
+	// test whether serial really established
+	write_serial("J|");
+	while(1){
+		if(serialDataAvail(fd_serial)){
+			printf("Arduino acknowledge: %c\n", serialGetchar(fd_serial));
+			break;
+		}
+	}
 	setup_rfcomm(svc_uuid_int);
 	setup_ip(port_no);
 

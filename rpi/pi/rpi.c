@@ -94,6 +94,8 @@ int main(int argc, char *argv[]){
 				else if(strcmp(bf_rfcomm, RUN)==0){
 					write_serial(bf_rfcomm);
 					write_serial(bf_ip);
+					bzero(bf_ip,sizeof(bf_ip));
+					sp = 0;
 				}
 				bzero(bf_rfcomm,sizeof(bf_rfcomm));
 			}

@@ -80,6 +80,8 @@ int main(int argc, char *argv[]){
 			else if(strcmp(buffer, RUN)==0){
 				write_serial(buffer);
 				write_serial(bf_ip);
+				bzero(bf_ip,sizeof(bf_ip));
+				sp = 0;
 			}
 			bzero(buffer,sizeof(buffer));
 		}

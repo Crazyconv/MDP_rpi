@@ -53,8 +53,7 @@ int main(int argc, char *argv[]){
 	int port_no = atoi(argv[1]);
 	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
-	FD_ZERO(&readfds);write_serial("J|");
-
+	FD_ZERO(&readfds);
 	printf("Program start up!\n");
 
 	setup_serial(BAUD, DEVICE_ARDUINO);

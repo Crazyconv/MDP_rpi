@@ -42,7 +42,10 @@ int fd_ip=-1, fd_rfcomm=-1, fd_serial=-1;
 int fd_ip_server, fd_rfcomm_server;
 fd_set readfds;
 
-int sp = 0;
+// =============================
+// Oct 6
+int step = 0, sp = 0, no_sp = 0;
+// =============================
 
 int main(int argc, char *argv[]){
 	char bf_ip[SIZE] = "", bf_rfcomm[SIZE] = "", bf_seial[SIZE] = "";
@@ -75,6 +78,10 @@ int main(int argc, char *argv[]){
 			if(strcmp(buffer, "end")==0){
 				break;
 			}
+// ====================================================
+// Oct 6 for testing			
+//			write_ip(buffer);
+// ====================================================
 		}
 
 		if (FD_ISSET(fd_rfcomm_server, &readfds_temp)){
@@ -86,30 +93,46 @@ int main(int argc, char *argv[]){
 		}
 
 		//if all three connections are established, start reading
+		//ip or rfcomm writing should be before serial.
 		if(fd_rfcomm > 0 && fd_serial > 0 && fd_ip > 0){
+//		if(fd_serial > 0 && fd_ip > 0){
 			if (FD_ISSET(fd_rfcomm, &readfds_temp)){
 				read_rfcomm(bf_rfcomm);
 				if(strcmp(bf_rfcomm, EXPLORE)==0)
 					write_serial(bf_rfcomm);
-				else if(strcmp(bf_rfcomm, RUN)==0){
-					write_serial(bf_rfcomm);
-					write_serial(bf_ip);
-				}
+				else if(strcmp(bf_rfcomm, RUN)==0)
+					write_ip(bf_rfcomm);
 				bzero(bf_rfcomm,sizeof(bf_rfcomm));
 			}
 
+			// if (FD_ISSET(fd_serial, &readfds_temp)){
+			// 	read_serial(bf_seial);
+			// 	write_ip(bf_seial);
+			// 	bzero(bf_seial,sizeof(bf_seial));
+			// }
+// =======================================================
+// Oct 6
 			if (FD_ISSET(fd_serial, &readfds_temp)){
 				read_serial(bf_seial);
-				write_ip(bf_seial);
+				if(no_sp < 2){
+					if(sp == 0){
+						write_ip(bf_seial);
+					} else {
+						count ++;
+						printf("Step %d performed\n", count);
+						if(count == step - 1){
+							sp = 0;
+							count = 0;
+						}
+					}
+				}
 				bzero(bf_seial,sizeof(bf_seial));
 			}
-		
+// =======================================================			
 			if (FD_ISSET(fd_ip, &readfds_temp)){
 				read_ip(bf_ip);
-				if(sp == 0){
-					write_serial(bf_ip);
-					bzero(bf_ip,sizeof(bf_ip));
-				}
+				write_serial(bf_ip);
+				bzero(bf_ip,sizeof(bf_ip));
 			}
 		}
 	}

@@ -13,12 +13,5 @@ extern int fd_ip_server, fd_rfcomm_server;
 
 extern fd_set readfds;
 
-// ===================
-// Oct 6
-extern int step;
 extern int sp;
-extern int no_sp;
-extern int gts;
-// ===================
-
 #endif

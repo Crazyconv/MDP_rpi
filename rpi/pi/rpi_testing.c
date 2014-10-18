@@ -51,14 +51,14 @@ int main(int argc, char *argv[]){
 	int count = 0;
 
 	int port_no = atoi(argv[1]);
-	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
+	//uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
 
 	FD_ZERO(&readfds);
 
 	printf("Program start up!\n");
 
 	setup_serial(BAUD, DEVICE_ARDUINO);
-	setup_rfcomm(svc_uuid_int);
+	//setup_rfcomm(svc_uuid_int);
 	setup_ip(port_no);
 
 	fflush(stdin);
@@ -75,28 +75,36 @@ int main(int argc, char *argv[]){
 			if(strcmp(buffer, "end")==0){
 				break;
 			}
+			if(strcmp(buffer, EXPLORE)==0)
+				write_serial(buffer);
+			else if(strcmp(buffer, RUN)==0){
+				write_serial(buffer);
+				write_serial(bf_ip);
+			}
+			bzero(buffer,sizeof(buffer));
 		}
 
-		if (FD_ISSET(fd_rfcomm_server, &readfds_temp)){
-			accept_rfcomm();
-		}
+		// if (FD_ISSET(fd_rfcomm_server, &readfds_temp)){
+		// 	accept_rfcomm();
+		// }
 
 		if (FD_ISSET(fd_ip_server, &readfds_temp)){
 			accept_ip();
 		}
 
 		//if all three connections are established, start reading
-		if(fd_rfcomm > 0 && fd_serial > 0 && fd_ip > 0){
-			if (FD_ISSET(fd_rfcomm, &readfds_temp)){
-				read_rfcomm(bf_rfcomm);
-				if(strcmp(bf_rfcomm, EXPLORE)==0)
-					write_serial(bf_rfcomm);
-				else if(strcmp(bf_rfcomm, RUN)==0){
-					write_serial(bf_rfcomm);
-					write_serial(bf_ip);
-				}
-				bzero(bf_rfcomm,sizeof(bf_rfcomm));
-			}
+//		if(fd_rfcomm > 0 && fd_serial > 0 && fd_ip > 0){
+		if(fd_serial > 0 && fd_ip > 0){			
+			// if (FD_ISSET(fd_rfcomm, &readfds_temp)){
+			// 	read_rfcomm(bf_rfcomm);
+			// 	if(strcmp(bf_rfcomm, EXPLORE)==0)
+			// 		write_serial(bf_rfcomm);
+			// 	else if(strcmp(bf_rfcomm, RUN)==0){
+			// 		write_serial(bf_rfcomm);
+			// 		write_serial(bf_ip);
+			// 	}
+			// 	bzero(bf_rfcomm,sizeof(bf_rfcomm));
+			// }
 
 			if (FD_ISSET(fd_serial, &readfds_temp)){
 				read_serial(bf_seial);
@@ -115,7 +123,7 @@ int main(int argc, char *argv[]){
 	}
 
 	close_ip();
-	close_rfcomm();
+//	close_rfcomm();
 	close_serial();
 
 	printf("Programm terminating...\n");

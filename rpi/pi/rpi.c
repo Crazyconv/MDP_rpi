@@ -56,7 +56,8 @@ int main(int argc, char *argv[]){
 	FD_ZERO(&readfds);
 	printf("Program start up!\n");
 
-	setup_serial(BAUD, DEVICE_ARDUINO);
+	setup_serial(BAUD, argv[2]);
+	//setup_serial(BAUD, DEVICE_ARDUINO);
 	// test whether serial really established
 	write_serial("J|");
 	// while(1){

@@ -6,7 +6,7 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
-char device[] = "/dev/ttyACM0";
+char device[] = "/dev/ttyACM";
 //unsigned char newChar;
 
 char buffer[256] = "";
@@ -14,10 +14,13 @@ char buffer[256] = "";
 int fd;
 unsigned long baud = 115200;
 
-int main(){
+int main(int argc, char *argv[]){
 	printf("Raspberry Pi Startup!\n");
 	fflush(stdout);
+	char newChar;
+	int index = 0;
 
+	strcat(device,argv[1]);
 	if((fd = serialOpen(device, baud)) < 0){
 		fprintf(stderr, "Unable to open serial device: %s\n", strerror(errno));
 		exit(1);
@@ -27,6 +30,23 @@ int main(){
 		scanf("%s", &buffer);
 		printf("%s\n", buffer);
 		serialPuts (fd,buffer);
+		if(strcmp(buffer, "X|")==0){
+			bzero(buffer, 256);
+			while(1){
+				if(serialDataAvail(fd)){
+					newChar = serialGetchar(fd);
+					if(newChar == '|'){
+						buffer[index] = '\0';
+						printf("sensor reading: %s\n",buffer);
+						index = 0;
+						break;
+					}else{
+						buffer[index] = newChar;
+						index ++;
+					}
+				}
+			}
+		}
 		bzero(buffer, 256); 
 	}
 	//newChar = serialGetchar(fd);

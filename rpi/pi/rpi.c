@@ -47,27 +47,31 @@ int sp = 0;
 int main(int argc, char *argv[]){
 	char bf_ip[SIZE] = "", bf_rfcomm[SIZE] = "", bf_seial[SIZE] = "";
 	char buffer[20] = "";
+	char device[20] = "/dev/ttyACM";
 
 	int count = 0;
-
+	
 	int port_no = atoi(argv[1]);
 	uint32_t svc_uuid_int[] = {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb};
+	
+	strcat(device,argv[2]);
+	printf("%s\n",device);
 
 	FD_ZERO(&readfds);
+
 	printf("Program start up!\n");
 
-	setup_serial(BAUD, argv[2]);
-	//setup_serial(BAUD, DEVICE_ARDUINO);
+	setup_serial(BAUD, device);
 	// test whether serial really established
-	write_serial("J|");
-	// while(1){
-	// 	if(serialDataAvail(fd_serial)){
-	// 		printf("Arduino acknowledge: %c\n", serialGetchar(fd_serial));
-	// 		break;
-	// 	}
-	// }
-	read_serial(bf_seial);
-	bzero(bf_seial,sizeof(bf_seial));
+//	write_serial("J|");
+//	while(1){
+//		if(serialDataAvail(fd_serial)){
+//			printf("Arduino acknowledge: %c\n", serialGetchar(fd_serial));
+//			break;
+//		}
+//	}
+//	read_serial(bf_seial);
+//	bzero(bf_seial,sizeof(bf_seial));
 	setup_rfcomm(svc_uuid_int);
 	setup_ip(port_no);
 

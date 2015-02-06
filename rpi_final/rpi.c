@@ -5,7 +5,7 @@
  * serial port: "/dev/ttyACM0"
  * bluetooth UUID: {0x1101, 0x1000, 0x80000080 ,0x5f9b34fb}
  * to compile, type in terminal: gcc -o rpi rpi.c ip.c rfcomm.c serial.c -lpthread -lbluetooth -lwiringPi
- * to run rpi, type in terminal: ./rpi 5000
+ * to run rpi, type in terminal: ./rpi 5000 0
  * one problem: if message from arduino is split using "|" then rpi will process it multiple times.
  */
 
